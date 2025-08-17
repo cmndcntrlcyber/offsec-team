@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "attack-node": {
+      "command": "node",
+      "args": ["attack-node/mcp/src/index.ts"],
+      "env": {
+        "ATTACK_NODE_BASE_URL": "http://localhost:5173",
+        "EMPIRE_BASE_URL": "http://localhost:1337",
+        "EMPIRE_API_TOKEN": "your_empire_api_token_here",
+        "BURP_API_URL": "http://localhost:1337",
+        "BURP_API_KEY": "your_burp_api_key_here"
+      }
+    },
+    "rtpi-pen": {
+      "command": "python",
+      "args": ["rtpi-pen/mcp/src/server.py"],
+      "env": {
+        "RTPI_PEN_BASE_URL": "http://localhost:8080",
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "rtpi_main",
+        "POSTGRES_USER": "your_postgres_user",
+        "POSTGRES_PASSWORD": "your_secure_postgres_password",
+        "REDIS_HOST": "localhost",
+        "REDIS_PORT": "6379"
+      }
+    },
+    "mcp-nexus": {
+      "command": "node",
+      "args": ["MCP-Nexus/server/mcp/nexus-server.ts"],
+      "env": {
+        "MCP_NEXUS_BASE_URL": "http://localhost:3000",
+        "ATTACK_NODE_MCP_URL": "http://localhost:3001",
+        "RTPI_PEN_MCP_URL": "http://localhost:3002"
+      }
+    }
+  }
+}

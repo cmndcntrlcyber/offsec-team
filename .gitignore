@@ -1,0 +1,270 @@
+# ================================================
+# Comprehensive .gitignore for OFFSEC-TEAM Project
+# Protects sensitive data before GitHub publication
+# ================================================
+
+# =================
+# ENVIRONMENT FILES
+# =================
+# Critical: Contains API tokens, secrets, and configuration
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+*.env
+
+# Keep example files for documentation
+!.env.example
+!.env.template
+!.env.sample
+
+# ===================
+# SECURITY & SECRETS
+# ===================
+# API Keys and Authentication
+**/secrets/
+**/keys/
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cert
+*.ca-bundle
+*.jks
+*.keystore
+
+# Security scan results and reports
+*.scan
+*.report
+*_scan_results*
+*_security_report*
+vulnerability_reports/
+penetration_test_results/
+
+# Authentication tokens and configs
+*token*
+*secret*
+*credential*
+bearer_tokens.txt
+auth_config.json
+
+# =================
+# DEVELOPMENT FILES
+# =================
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS-specific files
+ehthumbs.db
+Desktop.ini
+.directory
+
+# =================
+# PYTHON SPECIFIC
+# =================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+env.bak/
+venv.bak/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# =================
+# NODE.JS SPECIFIC
+# =================
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# =================
+# DATABASE & LOGS
+# =================
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.dump
+
+# Log files
+logs/
+*.log
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =================
+# WINDOWS SPECIFIC
+# =================
+# Windows debugging
+*.pdb
+*.idb
+*.dmp
+*.mdmp
+symbols/
+**/Symbols/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# ===================
+# PROJECT SPECIFIC
+# ===================
+# MCP Configuration files with sensitive data
+mcp-config.json
+mcp_config.json
+*-config-local.json
+
+# Integration test outputs
+integration_test_report.json
+integration_test_*.json
+test_reports/
+test_results/
+
+# Temporary files and directories
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Local development overrides
+local_settings.py
+settings_local.py
+config_local.*
+
+# Burp Suite files
+*.burp
+burp_*.xml
+burp_results/
+
+# Empire C2 files
+empire_data/
+*.empire
+
+# Attack frameworks data
+msf_data/
+metasploit_data/
+nmap_results/
+*.nmap
+
+# =================
+# CLOUDFLARE & CDN
+# =================
+# Cloudflare Workers secrets
+wrangler.toml
+.wrangler/
+
+# =================
+# BACKUP & ARCHIVE
+# =================
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+# Archive files (potentially containing sensitive data)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# =================
+# DOCUMENTATION
+# =================
+# Generated documentation
+docs/build/
+site/
+
+# =================
+# MISC & TEMPORARY
+# =================
+# Temporary system files
+.tmp
+.temp
+*.tmp
+*.temp
+
+# Editor backup files
+*~
+.#*
+#*#
+
+# Lock files
+*.lock
+
+# Cache directories
+.cache/
+.npm/
+.yarn-integrity
+
+# ================================================
+# END OF .gitignore
+# ================================================

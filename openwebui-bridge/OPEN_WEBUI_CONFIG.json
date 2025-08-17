@@ -1,0 +1,125 @@
+{
+  "agent_tool_bridge": {
+    "name": "Cybersecurity Agent Tool Bridge",
+    "description": "Complete cybersecurity agent ecosystem with 68+ tools across 5 categories",
+    "url": "http://localhost:8000",
+    "headers": {
+      "Authorization": "Bearer sk-755ea70d07874c7d9e0b46d3966eb145",
+      "Content-Type": "application/json"
+    },
+    "endpoints": {
+      "health": "/health",
+      "agents": "/agents", 
+      "execute": "/execute",
+      "docs": "/docs"
+    }
+  },
+  "sample_tools": [
+    {
+      "name": "Generate Code Template",
+      "endpoint": "/execute",
+      "method": "POST",
+      "body": {
+        "tool_name": "generate_language_template",
+        "agent": "rt_dev",
+        "parameters": {
+          "language": "{language}",
+          "template_type": "{template_type}",
+          "include_tests": "{include_tests}"
+        }
+      },
+      "parameters": [
+        {
+          "name": "language",
+          "type": "select",
+          "options": ["python", "javascript", "go", "rust"],
+          "required": true
+        },
+        {
+          "name": "template_type", 
+          "type": "select",
+          "options": ["fastapi", "flask", "express", "gin"],
+          "required": true
+        },
+        {
+          "name": "include_tests",
+          "type": "boolean",
+          "default": true
+        }
+      ]
+    },
+    {
+      "name": "Web Vulnerability Scan",
+      "endpoint": "/execute", 
+      "method": "POST",
+      "body": {
+        "tool_name": "test_injection_vulnerabilities",
+        "agent": "bug_hunter",
+        "parameters": {
+          "target_url": "{target_url}",
+          "scan_depth": "{scan_depth}",
+          "include_blind": "{include_blind}"
+        }
+      },
+      "parameters": [
+        {
+          "name": "target_url",
+          "type": "string",
+          "required": true,
+          "description": "Target URL to scan"
+        },
+        {
+          "name": "scan_depth",
+          "type": "select",
+          "options": ["shallow", "medium", "deep"],
+          "default": "medium"
+        },
+        {
+          "name": "include_blind",
+          "type": "boolean", 
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "BurpSuite Automated Scan",
+      "endpoint": "/execute",
+      "method": "POST", 
+      "body": {
+        "tool_name": "launch_automated_scan",
+        "agent": "burpsuite_operator",
+        "parameters": {
+          "target_url": "{target_url}",
+          "scan_type": "{scan_type}",
+          "timeout": "{timeout}"
+        }
+      },
+      "parameters": [
+        {
+          "name": "target_url",
+          "type": "string",
+          "required": true,
+          "description": "Target URL for BurpSuite scan"
+        },
+        {
+          "name": "scan_type",
+          "type": "select",
+          "options": ["crawl_and_audit", "audit_only", "crawl_only"],
+          "default": "crawl_and_audit"
+        },
+        {
+          "name": "timeout",
+          "type": "number",
+          "default": 3600,
+          "description": "Scan timeout in seconds"
+        }
+      ]
+    }
+  ],
+  "cloudflare_integration": {
+    "agent_mcp_token": "k0L4Fa3IxD9WEU5o_bmsySQiyKjQg-TEILgDX_v8",
+    "zones": ["attck.nexus", "c3s.nexus"],
+    "permissions": ["Custom Pages:Read", "Apps and Policies:Read"],
+    "usage": "For Cloudflare zone management and MCP server integration"
+  }
+}
