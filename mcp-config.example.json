@@ -33,6 +33,16 @@
         "ATTACK_NODE_MCP_URL": "http://localhost:3001",
         "RTPI_PEN_MCP_URL": "http://localhost:3002"
       }
+    },
+    "research-agent": {
+      "command": "node",
+      "args": ["tools/shared/mcp_clients/research-agent-client.js"],
+      "env": {
+        "RESEARCH_AGENT_ENDPOINT": "https://research-agent-mcp.attck-community.workers.dev",
+        "RESEARCH_AGENT_TOKEN": "your_research_agent_token_here",
+        "RESEARCH_AGENT_TIMEOUT": "30000",
+        "RESEARCH_AGENT_RETRY_ATTEMPTS": "3"
+      }
     }
   }
 }

@@ -90,3 +90,7 @@ fastapi-utils>=0.2.1
 
 # Environment variable management
 # python-dotenv already included above
+requests\ncloudflare\npyaml
+requests\ncloudflare\npyaml
+requests\ncloudflare\npyaml
+requests\ncloudflare\npyaml

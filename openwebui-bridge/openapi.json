@@ -1,0 +1,383 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Cybersecurity Agent Tool Bridge",
+    "description": "Complete cybersecurity agent ecosystem with 68+ tools across 5 categories for Open WebUI integration",
+    "version": "1.0.0",
+    "contact": {
+      "name": "ATTCK Nexus",
+      "url": "https://attck.nexus"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://tools.attck.nexus",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8001", 
+      "description": "Development server"
+    }
+  ],
+  "security": [
+    {
+      "HTTPBearer": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ToolRequest": {
+        "type": "object",
+        "required": ["tool_name", "agent"],
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "description": "Name of the tool to execute",
+            "examples": ["test_injection_vulnerabilities", "generate_language_template", "launch_automated_scan"]
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Tool parameters"
+          },
+          "agent": {
+            "type": "string",
+            "enum": ["rt_dev", "bug_hunter", "burpsuite_operator", "daedelu5", "nexus_kamuy"],
+            "description": "Target agent"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "Optional request ID for tracking"
+          }
+        }
+      },
+      "ToolResponse": {
+        "type": "object",
+        "required": ["success", "agent", "tool_name", "timestamp"],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "result": {
+            "description": "Tool execution result"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "agent": {
+            "type": "string"
+          },
+          "tool_name": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "execution_time_ms": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Health Check",
+        "description": "Check the health status and basic information about the cybersecurity agent tool bridge",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "timestamp": {"type": "string", "format": "date-time"},
+                    "version": {"type": "string"},
+                    "agents_loaded": {"type": "integer"},
+                    "open_webui_endpoint": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "Detailed Health Check",
+        "description": "Get detailed health information including agent status and system metrics",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/agents": {
+      "get": {
+        "tags": ["Core"],
+        "summary": "List Available Agents",
+        "description": "Get comprehensive list of all cybersecurity agents and their available tools",
+        "operationId": "list_agents_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved agents and tools",
+            "content": {
+              "application/json": {
+                "example": {
+                  "agents": {
+                    "bug_hunter": {
+                      "instances": ["web_vulnerability_tester", "framework_security_analyzer"],
+                      "available_tools": ["test_injection_vulnerabilities", "detect_framework"],
+                      "loaded": 2
+                    },
+                    "rt_dev": {
+                      "instances": ["code_forge_generator", "infrastructure_orchestrator"],
+                      "available_tools": ["generate_language_template", "deploy_docker_compose_stack"],
+                      "loaded": 2
+                    },
+                    "burpsuite_operator": {
+                      "instances": ["burp_scan_orchestrator", "burp_result_processor"],
+                      "available_tools": ["launch_automated_scan", "extract_scan_findings"],
+                      "loaded": 2
+                    },
+                    "daedelu5": {
+                      "instances": ["compliance_auditor", "security_policy_enforcer"],
+                      "available_tools": ["audit_infrastructure_compliance", "enforce_security_baseline"],
+                      "loaded": 2
+                    },
+                    "nexus_kamuy": {
+                      "instances": ["workflow_orchestrator", "agent_coordinator"],
+                      "available_tools": ["create_multi_agent_workflow", "coordinate_multi_agent_task"],
+                      "loaded": 2
+                    }
+                  },
+                  "total_agents": 5,
+                  "total_instances": 20,
+                  "open_webui_endpoint": "https://chat.attck.nexus/"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/execute": {
+      "post": {
+        "tags": ["Core"],
+        "summary": "Execute Cybersecurity Tool",
+        "description": "Execute any cybersecurity tool from the available agent ecosystem. Available agents: rt_dev (code generation), bug_hunter (vulnerability scanning), burpsuite_operator (automated penetration testing), daedelu5 (compliance auditing), nexus_kamuy (workflow orchestration).",
+        "operationId": "execute_tool_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ToolRequest"},
+              "examples": {
+                "vulnerability_scan": {
+                  "summary": "Web Vulnerability Scan",
+                  "description": "Scan a website for SQL injection and XSS vulnerabilities",
+                  "value": {
+                    "tool_name": "test_injection_vulnerabilities",
+                    "agent": "bug_hunter", 
+                    "parameters": {
+                      "target_url": "https://example.com",
+                      "scan_depth": "medium",
+                      "include_blind": false
+                    }
+                  }
+                },
+                "framework_detection": {
+                  "summary": "Detect Web Framework",
+                  "description": "Identify the technology stack of a target website",
+                  "value": {
+                    "tool_name": "detect_framework",
+                    "agent": "bug_hunter",
+                    "parameters": {
+                      "target_url": "https://example.com"
+                    }
+                  }
+                },
+                "code_generation": {
+                  "summary": "Generate Code Template", 
+                  "description": "Generate a FastAPI code template with tests",
+                  "value": {
+                    "tool_name": "generate_language_template",
+                    "agent": "rt_dev",
+                    "parameters": {
+                      "language": "python",
+                      "template_type": "fastapi",
+                      "include_tests": true
+                    }
+                  }
+                },
+                "infrastructure_deployment": {
+                  "summary": "Deploy Infrastructure",
+                  "description": "Deploy a Docker compose stack for development",
+                  "value": {
+                    "tool_name": "deploy_docker_compose_stack",
+                    "agent": "rt_dev",
+                    "parameters": {
+                      "services": ["web", "database", "redis"],
+                      "environment": "development"
+                    }
+                  }
+                },
+                "burp_scan": {
+                  "summary": "BurpSuite Automated Scan",
+                  "description": "Run a comprehensive BurpSuite scan",
+                  "value": {
+                    "tool_name": "launch_automated_scan", 
+                    "agent": "burpsuite_operator",
+                    "parameters": {
+                      "target_url": "https://example.com",
+                      "scan_type": "crawl_and_audit",
+                      "timeout": 3600
+                    }
+                  }
+                },
+                "compliance_audit": {
+                  "summary": "Compliance Audit",
+                  "description": "Audit infrastructure for SOC2 compliance",
+                  "value": {
+                    "tool_name": "audit_infrastructure_compliance",
+                    "agent": "daedelu5",
+                    "parameters": {
+                      "framework": "SOC2",
+                      "scope": "infrastructure"
+                    }
+                  }
+                },
+                "workflow_orchestration": {
+                  "summary": "Multi-Agent Workflow",
+                  "description": "Create a coordinated workflow across multiple agents",
+                  "value": {
+                    "tool_name": "create_multi_agent_workflow",
+                    "agent": "nexus_kamuy",
+                    "parameters": {
+                      "workflow_type": "security_assessment",
+                      "agents": ["bug_hunter", "burpsuite_operator"],
+                      "target": "https://example.com"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tool executed successfully",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ToolResponse"},
+                "examples": {
+                  "vulnerability_scan_result": {
+                    "summary": "Vulnerability scan completed",
+                    "value": {
+                      "success": true,
+                      "result": {
+                        "vulnerabilities_found": 3,
+                        "scan_status": "completed",
+                        "target_url": "https://example.com",
+                        "vulnerabilities": [
+                          {
+                            "type": "XSS",
+                            "severity": "medium",
+                            "location": "/search?q="
+                          }
+                        ]
+                      },
+                      "error": null,
+                      "agent": "bug_hunter",
+                      "tool_name": "test_injection_vulnerabilities",
+                      "request_id": "req_123",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "execution_time_ms": 2500
+                    }
+                  },
+                  "code_generation_result": {
+                    "summary": "Code template generated",
+                    "value": {
+                      "success": true,
+                      "result": {
+                        "template_created": true,
+                        "language": "python",
+                        "framework": "fastapi",
+                        "files_generated": ["main.py", "requirements.txt", "tests/test_main.py"],
+                        "project_structure": {
+                          "main.py": "FastAPI application entry point",
+                          "requirements.txt": "Python dependencies",
+                          "tests/": "Test directory with unit tests"
+                        }
+                      },
+                      "error": null,
+                      "agent": "rt_dev",
+                      "tool_name": "generate_language_template",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "execution_time_ms": 1200
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Invalid tool request or parameters"},
+          "401": {"description": "Authentication required - provide Bearer token"},
+          "422": {"description": "Validation Error"},
+          "500": {"description": "Tool execution failed"}
+        },
+        "security": [
+          {"HTTPBearer": []}
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Core",
+      "description": "Core API endpoints for health checks and tool execution"
+    },
+    {
+      "name": "RT-Dev",
+      "description": "Code generation, infrastructure deployment, and CI/CD automation tools"
+    },
+    {
+      "name": "Bug Hunter",
+      "description": "Web vulnerability testing and security analysis tools"
+    },
+    {
+      "name": "BurpSuite Operator", 
+      "description": "Automated BurpSuite scanning and vulnerability assessment tools"
+    },
+    {
+      "name": "Daedelu5",
+      "description": "Infrastructure compliance, auditing, and policy enforcement tools"
+    },
+    {
+      "name": "Nexus-Kamuy",
+      "description": "Workflow orchestration and multi-agent coordination tools"
+    }
+  ]
+}

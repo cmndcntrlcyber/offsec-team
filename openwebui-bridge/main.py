@@ -8,14 +8,16 @@ Provides standardized REST endpoints for Open WebUI integration at https://chat.
 import os
 import sys
 import logging
+import requests
+import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Depends, Request, Security
+from fastapi import FastAPI, HTTPException, Depends, Request, Security, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
@@ -52,6 +54,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("AgentToolBridge")
+
+# Configuration
+TOOLS_ENDPOINT_URL = os.getenv('TOOLS_ENDPOINT_URL', 'https://tools.attck.nexus')
 
 # Global agent instances
 agent_instances = {}
@@ -116,11 +121,16 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS configuration for Open WebUI at https://chat.attck.nexus/
+# CORS configuration for Open WebUI at https://chat.attck.nexus/ and researcher integration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://chat.attck.nexus",
+        "https://researcher.c3s.nexus",
+        "https://tools.attck.nexus",
+        "http://192.168.1.81",
+        "http://192.168.1.81:3000",
+        "http://192.168.1.81:8080",
         "http://localhost:3000",
         "http://localhost:8080",
         "http://127.0.0.1:3000",
@@ -128,7 +138,7 @@ app.add_middleware(
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Chat-Thread-ID", "X-User-ID", "X-Session-ID", "X-Origin-Endpoint"],
 )
 
 # Security
@@ -160,6 +170,35 @@ class HealthResponse(BaseModel):
     version: str
     agents_loaded: int
     open_webui_endpoint: str
+
+class ResearcherRequest(BaseModel):
+    """Request model for researcher routing"""
+    request_type: str = Field(..., description="Type of researcher request")
+    agent: str = Field(..., description="Target agent")
+    tool_name: str = Field(..., description="Tool to execute")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Tool parameters")
+    context: Dict[str, Any] = Field(..., description="Thread context information")
+    routing_chain: List[str] = Field(default_factory=list, description="Routing chain for request")
+
+class ResearcherResponse(BaseModel):
+    """Response model for researcher routing"""
+    success: bool
+    result: Any = None
+    error: Optional[str] = None
+    context: Dict[str, Any]
+    return_to: str
+    execution_time_ms: Optional[int] = None
+    insights: Optional[str] = None
+    recommendations: Optional[str] = None
+
+class ContextualToolRequest(BaseModel):
+    """Enhanced tool request with context"""
+    tool_name: str = Field(..., description="Name of the tool to execute")
+    parameters: Dict[str, Any] = Field(default_factory=dict, description="Tool parameters")
+    agent: str = Field(..., description="Target agent")
+    request_id: Optional[str] = Field(None, description="Optional request ID for tracking")
+    context: Optional[Dict[str, Any]] = Field(None, description="Thread context")
+    route_via_researcher: bool = Field(False, description="Whether to route via researcher")
 
 # Authentication dependency
 async def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> str:
@@ -271,7 +310,7 @@ async def root():
         timestamp=datetime.utcnow(),
         version="1.0.0",
         agents_loaded=len(agent_instances),
-        open_webui_endpoint="https://chat.attck.nexus/"
+        open_webui_endpoint=TOOLS_ENDPOINT_URL
     )
 
 @app.get("/health", response_model=HealthResponse)
@@ -282,7 +321,7 @@ async def health_check():
         timestamp=datetime.utcnow(),
         version="1.0.0",
         agents_loaded=len(agent_instances),
-        open_webui_endpoint="https://chat.attck.nexus/"
+        open_webui_endpoint=TOOLS_ENDPOINT_URL
     )
 
 @app.get("/agents")
@@ -312,7 +351,7 @@ async def list_agents():
         "agents": agents_info,
         "total_agents": len(agents_info),
         "total_instances": len(agent_instances),
-        "open_webui_endpoint": "https://chat.attck.nexus/"
+        "open_webui_endpoint": TOOLS_ENDPOINT_URL
     }
 
 @app.post("/execute", response_model=ToolResponse)
@@ -350,6 +389,185 @@ async def execute_tool(
             timestamp=start_time,
             execution_time_ms=int(execution_time)
         )
+
+@app.post("/execute/contextual", response_model=ToolResponse)
+async def execute_contextual_tool(
+    request: ContextualToolRequest,
+    token: str = Depends(verify_token),
+    x_chat_thread_id: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None),
+    x_session_id: Optional[str] = Header(None),
+    x_origin_endpoint: Optional[str] = Header(None)
+):
+    """Execute a tool with contextual routing support"""
+    start_time = datetime.utcnow()
+    
+    try:
+        # Build context from headers if not provided in request
+        if not request.context:
+            request.context = {
+                "thread_id": x_chat_thread_id,
+                "user_id": x_user_id,
+                "session_id": x_session_id,
+                "origin_endpoint": x_origin_endpoint or "https://chat.attck.nexus",
+                "timestamp": int(start_time.timestamp())
+            }
+        
+        # Route via researcher if requested
+        if request.route_via_researcher:
+            logger.info(f"Routing {request.agent}.{request.tool_name} via researcher for thread {request.context.get('thread_id')}")
+            result = await route_to_researcher(request, request.context)
+        else:
+            logger.info(f"Direct execution of {request.agent}.{request.tool_name}")
+            result = execute_agent_tool(request.agent, request.tool_name, request.parameters)
+        
+        return ToolResponse(
+            success=result["success"],
+            result=result.get("result"),
+            error=result.get("error"),
+            agent=request.agent,
+            tool_name=request.tool_name,
+            request_id=request.request_id,
+            timestamp=start_time,
+            execution_time_ms=result.get("execution_time_ms")
+        )
+        
+    except Exception as e:
+        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        logger.error(f"Contextual execution failed: {str(e)}")
+        
+        return ToolResponse(
+            success=False,
+            error=str(e),
+            agent=request.agent,
+            tool_name=request.tool_name,
+            request_id=request.request_id,
+            timestamp=start_time,
+            execution_time_ms=int(execution_time)
+        )
+
+@app.get(
+    "/openapi.json",
+    tags=["Core"],
+    summary="OpenAPI Specification", 
+    description="Get the OpenAPI 3.0 specification for OpenWebUI tool integration",
+    include_in_schema=False
+)
+async def get_openapi_json():
+    """
+    Serve OpenAPI specification for OpenWebUI integration
+    
+    This endpoint provides the complete OpenAPI 3.0 specification that OpenWebUI
+    can use to discover and integrate with all available cybersecurity tools.
+    """
+    import os
+    openapi_file = os.path.join(os.path.dirname(__file__), "openapi.json")
+    if os.path.exists(openapi_file):
+        return FileResponse(
+            openapi_file,
+            media_type="application/json",
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
+    else:
+        # Fallback to FastAPI's auto-generated OpenAPI
+        return app.openapi()
+
+@app.post("/researcher/callback")
+async def researcher_callback(
+    request: ResearcherResponse,
+    token: str = Depends(verify_token)
+):
+    """Handle callbacks from researcher.c3s.nexus with analysis results"""
+    try:
+        logger.info(f"Received researcher callback for thread {request.context.get('thread_id')}")
+        
+        # Process the researcher response and route back to chat
+        return_url = request.return_to
+        context = request.context
+        
+        # Format the response for the chat interface
+        formatted_response = {
+            "success": request.success,
+            "result": {
+                "insights": request.insights,
+                "recommendations": request.recommendations,
+                "tool_results": request.result,
+                "context": context,
+                "routing_chain": "chat.attck.nexus → tools.attck.nexus → researcher.c3s.nexus → chat.attck.nexus"
+            },
+            "error": request.error,
+            "execution_time_ms": request.execution_time_ms,
+            "timestamp": datetime.utcnow()
+        }
+        
+        # Log successful callback processing
+        logger.info(f"Processed researcher callback for thread {context.get('thread_id')}, routing back to {return_url}")
+        
+        return {
+            "status": "callback_processed",
+            "thread_id": context.get("thread_id"),
+            "return_url": return_url,
+            "response": formatted_response
+        }
+        
+    except Exception as e:
+        logger.error(f"Researcher callback processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Callback processing failed: {str(e)}")
+
+async def route_to_researcher(request: ContextualToolRequest, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Route request to researcher.c3s.nexus for complex analysis"""
+    try:
+        researcher_url = "https://researcher.c3s.nexus/analyze"
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('RESEARCHER_API_TOKEN', 'sk-755ea70d07874c7d9e0b46d3966eb145')}",
+            "Content-Type": "application/json",
+            "X-Chat-Thread-ID": context.get("thread_id", ""),
+            "X-User-ID": context.get("user_id", ""),
+            "X-Session-ID": context.get("session_id", ""),
+            "X-Origin-Endpoint": context.get("origin_endpoint", "https://chat.attck.nexus")
+        }
+        
+        payload = {
+            "request_type": "tool_execution",
+            "agent": request.agent,
+            "tool_name": request.tool_name,
+            "parameters": request.parameters,
+            "context": context,
+            "routing_chain": [
+                "https://chat.attck.nexus",
+                "https://tools.attck.nexus",
+                "https://researcher.c3s.nexus"
+            ],
+            "callback_url": "https://tools.attck.nexus/researcher/callback"
+        }
+        
+        logger.info(f"Sending request to researcher: {request.agent}.{request.tool_name}")
+        
+        # Use asyncio for async HTTP request
+        response = await asyncio.to_thread(
+            requests.post,
+            researcher_url,
+            headers=headers,
+            json=payload,
+            timeout=45
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            # Ensure the response includes routing back to chat
+            result["context"] = context
+            result["return_to"] = context.get("origin_endpoint", "https://chat.attck.nexus")
+            return result
+        else:
+            logger.warning(f"Researcher API error: {response.status_code} - {response.text}")
+            # Fallback to direct tool execution
+            return execute_agent_tool(request.agent, request.tool_name, request.parameters)
+            
+    except Exception as e:
+        logger.error(f"Researcher routing error: {str(e)}")
+        # Fallback to direct tool execution
+        return execute_agent_tool(request.agent, request.tool_name, request.parameters)
 
 # Agent-specific routes
 try:
@@ -402,7 +620,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8001,
         reload=True,
         log_level="info"
     )

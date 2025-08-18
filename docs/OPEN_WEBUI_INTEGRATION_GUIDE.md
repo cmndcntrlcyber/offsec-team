@@ -36,14 +36,19 @@ python start-bridge.py --validate-only
 
 ## Available Agent Tools
 
-### 1. RT-Dev Tools (4 instances, 12 tools)
-**Purpose**: Rapid development and deployment capabilities
+### 1. RT-Dev Tools (7 instances, 24 tools)
+**Purpose**: Rapid development, deployment capabilities, and DevSecOps research intelligence
 
-**Instances**:
+**Core Development Instances**:
 - `code_forge_generator`: Code generation and validation
 - `infrastructure_orchestrator`: Infrastructure deployment 
 - `platform_connector`: Platform integration
 - `ci_pipeline_manager`: CI/CD pipeline management
+
+**Research Intelligence Instances**:
+- `researcher_security_integration`: DevSecOps practices and CI/CD security integration
+- `researcher_code_analysis`: Static/dynamic analysis and security pattern detection
+- `researcher_automation_intelligence`: Automation frameworks and testing intelligence
 
 **Available Tools**:
 - `generate_language_template` - Generate code templates
@@ -58,14 +63,29 @@ python start-bridge.py --validate-only
 - `create_pipeline_configuration` - Create CI pipelines
 - `execute_test_suite` - Run test suites
 - `manage_deployment_workflow` - Manage deployments
+- `research_devsecops_practices` - DevSecOps methodologies research
+- `integrate_cicd_security` - CI/CD security integration research
+- `research_security_testing_automation` - Automated security testing research
+- `research_static_analysis_techniques` - Static code analysis research
+- `analyze_security_patterns` - Security patterns and anti-patterns analysis
+- `research_code_quality_metrics` - Code quality assessment research
+- `research_testing_automation_intelligence` - Intelligent testing automation research
+- `optimize_deployment_automation` - Deployment automation optimization
+- `research_infrastructure_automation_intelligence` - Infrastructure automation research
+- And 3 more specialized tools...
 
-### 2. Bug Hunter Tools (3 instances, 9 tools)
-**Purpose**: Web vulnerability testing and security analysis
+### 2. Bug Hunter Tools (6 instances, 18 tools)
+**Purpose**: Web vulnerability testing, security analysis, and threat intelligence research
 
-**Instances**:
+**Core Testing Instances**:
 - `web_vulnerability_tester`: Web security testing
 - `framework_security_analyzer`: Framework security analysis
 - `vulnerability_report_generator`: Report generation
+
+**Research Intelligence Instances**:
+- `researcher_threat_intelligence`: Threat intelligence gathering and analysis
+- `researcher_exploit_database`: Exploit research and analysis
+- `researcher_vuln_context`: Vulnerability context and impact analysis
 
 **Available Tools**:
 - `analyze_cross_site_vulnerabilities` - XSS testing
@@ -77,15 +97,29 @@ python start-bridge.py --validate-only
 - `create_executive_summary` - Executive summaries
 - `export_report_data` - Export reports
 - `generate_comprehensive_report` - Full security reports
+- `gather_threat_intelligence` - Threat intelligence research
+- `research_vulnerability_context` - CVE context analysis
+- `analyze_attack_patterns` - Attack technique analysis
+- `search_exploit_database` - Exploit database research
+- `analyze_exploit_code` - Exploit code analysis
+- `research_exploit_techniques` - Exploitation method research
+- `analyze_vulnerability_context` - Vulnerability impact analysis
+- `research_attack_scenarios` - Attack scenario research
+- `assess_business_impact` - Business impact evaluation
 
-### 3. BurpSuite Operator Tools (4 instances, 23 tools)
-**Purpose**: BurpSuite integration and automated scanning
+### 3. BurpSuite Operator Tools (7 instances, 35 tools)
+**Purpose**: BurpSuite integration, automated scanning, and payload intelligence research
 
-**Instances**:
+**Core Testing Instances**:
 - `burp_suite_client`: BurpSuite API client
 - `burp_scan_orchestrator`: Scan management
 - `burp_result_processor`: Result processing
 - `burp_vulnerability_assessor`: Risk assessment
+
+**Research Intelligence Instances**:
+- `researcher_payload_intelligence`: Payload research and evasion techniques
+- `researcher_scan_enhancer`: Scan optimization and methodology enhancement
+- `researcher_webapp_intelligence`: Web application intelligence and attack surface analysis
 
 **Available Tools**:
 - `establish_burp_connection` - Connect to BurpSuite
@@ -99,16 +133,30 @@ python start-bridge.py --validate-only
 - `classify_vulnerability_findings` - Classify vulnerabilities
 - `calculate_vulnerability_risk` - Risk assessment
 - `generate_executive_summary` - Executive summaries
-- And 12 more specialized tools...
+- `research_payload_intelligence` - Payload effectiveness research
+- `analyze_evasion_techniques` - WAF bypass research
+- `optimize_payload_selection` - Target-specific payload optimization
+- `research_scan_optimization` - Scan configuration research
+- `analyze_coverage_gaps` - Scan coverage analysis
+- `enhance_scan_methodology` - Methodology improvement research
+- `research_web_app_intelligence` - Web application intelligence gathering
+- `analyze_attack_surface` - Attack surface mapping
+- `research_technology_vulnerabilities` - Technology stack vulnerability research
+- And 14 more specialized tools...
 
-### 4. Daedelu5 Tools (4 instances, 19 tools)
-**Purpose**: Infrastructure as Code and compliance management
+### 4. Daedelu5 Tools (7 instances, 31 tools)
+**Purpose**: Infrastructure as Code, compliance management, and governance intelligence research
 
-**Instances**:
+**Core Management Instances**:
 - `infrastructure_iac_manager`: IaC management
 - `compliance_auditor`: Compliance auditing
 - `security_policy_enforcer`: Policy enforcement
 - `self_healing_integrator`: Self-healing systems
+
+**Research Intelligence Instances**:
+- `researcher_compliance_intelligence`: Compliance frameworks and regulatory research
+- `researcher_policy_analyzer`: Security policy and governance analysis
+- `researcher_risk_intelligence`: Risk intelligence and threat landscape analysis
 
 **Available Tools**:
 - `build_docker_compose_environment` - Build Docker environments
@@ -121,16 +169,30 @@ python start-bridge.py --validate-only
 - `apply_hardening_configurations` - Security hardening
 - `manage_access_controls` - Access control management
 - `define_healing_rules` - Self-healing rules
-- And 9 more specialized tools...
+- `research_compliance_frameworks` - Compliance framework research
+- `analyze_regulatory_changes` - Regulatory updates analysis
+- `assess_compliance_gaps` - Compliance gap identification
+- `analyze_security_policies` - Security policy analysis
+- `research_policy_effectiveness` - Policy effectiveness research
+- `optimize_policy_framework` - Policy framework optimization
+- `research_risk_intelligence` - Risk intelligence gathering
+- `analyze_threat_landscape` - Threat landscape analysis
+- `assess_business_risk_impact` - Business risk impact assessment
+- And 12 more specialized tools...
 
-### 5. Nexus-Kamuy Tools (4 instances, 25 tools)
-**Purpose**: Multi-agent orchestration and collaboration
+### 5. Nexus-Kamuy Tools (7 instances, 37 tools)
+**Purpose**: Multi-agent orchestration, collaboration, and workflow intelligence research
 
-**Instances**:
+**Core Orchestration Instances**:
 - `workflow_orchestrator`: Workflow management
 - `agent_coordinator`: Agent coordination
 - `task_scheduler`: Task scheduling
 - `collaboration_manager`: Agent collaboration
+
+**Research Intelligence Instances**:
+- `researcher_workflow_optimization`: Workflow optimization and automation pattern research
+- `researcher_task_intelligence`: Task analysis and resource optimization research
+- `researcher_collaboration_enhancement`: Team collaboration and communication optimization research
 
 **Available Tools**:
 - `create_multi_agent_workflow` - Multi-agent workflows
@@ -143,7 +205,16 @@ python start-bridge.py --validate-only
 - `establish_collaboration_session` - Collaboration sessions
 - `facilitate_knowledge_sharing` - Knowledge sharing
 - `synchronize_session_data` - Data synchronization
-- And 15 more specialized tools...
+- `research_workflow_patterns` - Workflow patterns research
+- `analyze_process_bottlenecks` - Process bottleneck analysis
+- `optimize_automation_workflows` - Automation workflow optimization
+- `analyze_task_performance` - Task performance analysis
+- `research_resource_optimization` - Resource optimization research
+- `analyze_task_prioritization` - Task prioritization analysis
+- `research_team_dynamics` - Team dynamics research
+- `optimize_communication_patterns` - Communication pattern optimization
+- `enhance_knowledge_sharing` - Knowledge sharing enhancement
+- And 18 more specialized tools...
 
 ## API Endpoints
 
