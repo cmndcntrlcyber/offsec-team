@@ -38,7 +38,7 @@ class Filter:
             default=True, description="Enable simultaneous requests to all three endpoints"
         )
         parallel_request_timeout: int = Field(
-            default=30, description="Timeout for parallel requests in seconds"
+            default=45, description="Timeout for parallel requests in seconds"
         )
         bearer_token: str = Field(
             default="sk-755ea70d07874c7d9e0b46d3966eb145", description="Bearer token for API authentication"
@@ -54,6 +54,12 @@ class Filter:
         )
         debug_mode: bool = Field(
             default=False, description="Enable debug logging"
+        )
+        enable_enhanced_routing: bool = Field(
+            default=True, description="Enable enhanced routing with multi-endpoint analysis"
+        )
+        enhanced_complexity_threshold: str = Field(
+            default="moderate", description="Complexity threshold for enhanced routing: simple, moderate, complex, orchestrated"
         )
 
     class UserValves(BaseModel):
@@ -261,7 +267,7 @@ class Filter:
         return self._aggregate_parallel_responses(responses, context, agent, tool, total_time)
     
     def _request_tools_endpoint(self, payload: Dict[str, Any], headers: Dict[str, str]) -> Dict[str, Any]:
-        """Make request to tools.attck.nexus endpoint"""
+        """Make request to tools.attck.nexus endpoint with enhanced error handling"""
         try:
             response = requests.post(
                 f"{self.valves.api_base_url}/execute",
@@ -271,13 +277,30 @@ class Filter:
             )
             
             if response.status_code == 200:
-                result = response.json()
-                result["endpoint_source"] = "tools.attck.nexus"
-                return result
+                # Check if response is HTML (error page) instead of JSON
+                content_type = response.headers.get('content-type', '').lower()
+                if 'text/html' in content_type or response.text.strip().startswith('<!DOCTYPE'):
+                    return {
+                        "success": False,
+                        "error": "Endpoint returned HTML error page instead of JSON response",
+                        "endpoint_source": "tools.attck.nexus",
+                        "html_response": True
+                    }
+                
+                try:
+                    result = response.json()
+                    result["endpoint_source"] = "tools.attck.nexus"
+                    return result
+                except json.JSONDecodeError:
+                    return {
+                        "success": False,
+                        "error": f"Invalid JSON response: {response.text[:200]}...",
+                        "endpoint_source": "tools.attck.nexus"
+                    }
             else:
                 return {
                     "success": False,
-                    "error": f"HTTP {response.status_code}: {response.text}",
+                    "error": f"HTTP {response.status_code}: {response.text[:200]}...",
                     "endpoint_source": "tools.attck.nexus"
                 }
         except Exception as e:
@@ -672,52 +695,117 @@ class Filter:
             return False
 
     def _setup_fallback_tools(self):
-        """Set up fallback tools when API is unavailable"""
+        """Set up enhanced fallback tools when API is unavailable"""
         self.available_tools = {
             'bug_hunter': {
                 'loaded': 1,
                 'available_tools': [
+                    # Core vulnerability assessment tools
                     'bug_hunter.detect_framework',
                     'bug_hunter.test_injection_vulnerabilities',
                     'bug_hunter.analyze_cross_site_vulnerabilities',
-                    'bug_hunter.evaluate_authentication_security'
+                    'bug_hunter.evaluate_authentication_security',
+                    # Enhanced threat intelligence tools
+                    'bug_hunter.threat_intelligence_lookup',
+                    'bug_hunter.exploit_database_search',
+                    # Enhanced research capabilities
+                    'bug_hunter.multi_agent_vulnerability_assessment',
+                    'bug_hunter.advanced_threat_intelligence_research',
+                    'bug_hunter.automated_penetration_testing_workflow'
                 ]
             },
             'rt_dev': {
                 'loaded': 1,
                 'available_tools': [
+                    # Core development tools
                     'rt_dev.generate_language_template',
                     'rt_dev.deploy_docker_compose_stack',
-                    'rt_dev.generate_terraform_configuration'
+                    'rt_dev.generate_terraform_configuration',
+                    # Enhanced development capabilities
+                    'rt_dev.ci_cd_pipeline_analysis',
+                    'rt_dev.security_integration_assessment',
+                    'rt_dev.infrastructure_security_assessment',
+                    # Enhanced automation tools
+                    'rt_dev.automated_deployment_workflow',
+                    'rt_dev.secure_code_generation',
+                    'rt_dev.infrastructure_as_code_security'
                 ]
             },
             'burpsuite_operator': {
                 'loaded': 1,
                 'available_tools': [
+                    # Core BurpSuite tools
                     'burpsuite_operator.launch_automated_scan',
                     'burpsuite_operator.establish_burp_connection',
-                    'burpsuite_operator.extract_scan_findings'
+                    'burpsuite_operator.extract_scan_findings',
+                    # Enhanced web application testing
+                    'burpsuite_operator.payload_intelligence_analysis',
+                    'burpsuite_operator.web_app_intelligence_gathering',
+                    'burpsuite_operator.advanced_scan_orchestration',
+                    # Enhanced research capabilities
+                    'burpsuite_operator.automated_penetration_testing_workflow',
+                    'burpsuite_operator.comprehensive_web_assessment',
+                    'burpsuite_operator.intelligent_payload_generation'
                 ]
             },
             'daedelu5': {
                 'loaded': 1,
                 'available_tools': [
+                    # Core compliance tools
                     'daedelu5.audit_infrastructure_compliance',
                     'daedelu5.check_regulatory_requirements',
-                    'daedelu5.enforce_security_baseline'
+                    'daedelu5.enforce_security_baseline',
+                    # Enhanced compliance capabilities
+                    'daedelu5.risk_intelligence_assessment',
+                    'daedelu5.policy_analysis_engine',
+                    'daedelu5.infrastructure_security_assessment',
+                    # Enhanced governance tools
+                    'daedelu5.comprehensive_compliance_audit',
+                    'daedelu5.regulatory_intelligence_analysis',
+                    'daedelu5.security_governance_optimization'
                 ]
             },
             'nexus_kamuy': {
                 'loaded': 1,
                 'available_tools': [
+                    # Core orchestration tools
                     'nexus_kamuy.create_multi_agent_workflow',
                     'nexus_kamuy.coordinate_multi_agent_task',
-                    'nexus_kamuy.establish_collaboration_session'
+                    'nexus_kamuy.establish_collaboration_session',
+                    # Enhanced workflow capabilities
+                    'nexus_kamuy.workflow_optimization_engine',
+                    'nexus_kamuy.task_intelligence_coordinator',
+                    'nexus_kamuy.orchestrated_security_workflow',
+                    # Enhanced coordination tools
+                    'nexus_kamuy.multi_agent_research_coordination',
+                    'nexus_kamuy.intelligent_task_distribution',
+                    'nexus_kamuy.real_time_collaboration_management'
+                ]
+            },
+            'enhanced_research': {
+                'loaded': 1,
+                'available_tools': [
+                    # Enhanced web search and analysis
+                    'enhanced_research.enhanced_web_search',
+                    'enhanced_research.advanced_content_analysis',
+                    'enhanced_research.multi_endpoint_research',
+                    # Multi-agent coordination
+                    'enhanced_research.multi_agent_vulnerability_assessment',
+                    'enhanced_research.orchestrated_security_workflow',
+                    'enhanced_research.advanced_threat_intelligence_research',
+                    # Infrastructure and compliance
+                    'enhanced_research.infrastructure_security_assessment',
+                    'enhanced_research.comprehensive_compliance_audit',
+                    'enhanced_research.automated_penetration_testing_workflow',
+                    # Research workflow optimization
+                    'enhanced_research.research_workflow_orchestration',
+                    'enhanced_research.intelligent_research_routing',
+                    'enhanced_research.parallel_endpoint_analysis'
                 ]
             }
         }
-        self._build_tool_mappings()
-        self._log("Fallback tools configuration loaded")
+        self._build_enhanced_tool_mappings()
+        self._log("Enhanced fallback tools configuration loaded with 49+ capabilities")
 
     def _build_tool_mappings(self):
         """Build mappings from common tasks to specific tools"""
@@ -751,8 +839,29 @@ class Filter:
         }
 
     def _detect_intent(self, message: str) -> Optional[str]:
-        """Detect user intent from message content"""
+        """Detect user intent from message content with enhanced priority-based matching"""
         message_lower = message.lower()
+        
+        # Check for enhanced research patterns first (highest priority)
+        if any(term in message_lower for term in [
+            'enhanced web search', 'advanced threat intelligence', 'comprehensive research',
+            'multi-endpoint analysis', 'research workflow', 'intelligence research'
+        ]):
+            return 'enhanced_research'
+        
+        # Check for multi-agent workflow patterns
+        if any(term in message_lower for term in [
+            'orchestrated security workflow', 'multi-agent coordination', 'workflow optimization',
+            'comprehensive security', 'end-to-end assessment', 'integrated analysis'
+        ]):
+            return 'nexus_kamuy'
+        
+        # Check for enhanced vulnerability assessment patterns
+        if any(term in message_lower for term in [
+            'multi-agent vulnerability', 'comprehensive vulnerability', 'advanced vulnerability',
+            'security workflow', 'penetration testing workflow'
+        ]):
+            return 'bug_hunter'
         
         # Check for explicit agent mentions
         if 'bug hunter' in message_lower or 'vulnerability' in message_lower:
