@@ -88,9 +88,8 @@ fastapi-utils>=0.2.1
 # CORS support (included in FastAPI)
 # python-cors already handled by FastAPI middleware
 
-# Environment variable management
+# Environment variable management  
 # python-dotenv already included above
-requests\ncloudflare\npyaml
-requests\ncloudflare\npyaml
-requests\ncloudflare\npyaml
-requests\ncloudflare\npyaml
+
+# Additional cloud service integrations
+cloudflare>=2.11.1

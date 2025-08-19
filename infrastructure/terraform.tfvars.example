@@ -1,0 +1,34 @@
+# =======================================================
+# Terraform Variables - Example Template
+# =======================================================
+# IMPORTANT: Copy this to terraform.tfvars and fill with real values
+# NEVER commit terraform.tfvars to version control!
+# =======================================================
+
+# Service authentication tokens - Generate these using generate-tokens.py
+# These should be 64-character cryptographically secure strings
+chat_service_token = "REPLACE_WITH_GENERATED_CHAT_SERVICE_TOKEN_64_CHARS"
+tools_service_token = "REPLACE_WITH_GENERATED_TOOLS_SERVICE_TOKEN_64_CHARS"
+research_service_token = "REPLACE_WITH_GENERATED_RESEARCH_SERVICE_TOKEN_64_CHARS"
+mcp_service_token = "REPLACE_WITH_GENERATED_MCP_SERVICE_TOKEN_64_CHARS"
+rtpi_pen_token = "REPLACE_WITH_GENERATED_RTPI_PEN_TOKEN_64_CHARS"
+
+# Cloudflare API Configuration
+# Get these from your Cloudflare dashboard
+cloudflare_api_token = "YOUR_CLOUDFLARE_API_TOKEN_HERE"
+cloudflare_c3s_edit = "YOUR_CLOUDFLARE_C3S_ZONE_EDIT_TOKEN"
+cloudflare_attck_edit = "YOUR_CLOUDFLARE_ATTCK_ZONE_EDIT_TOKEN"
+cloudflare_account_id = "YOUR_CLOUDFLARE_ACCOUNT_ID_HERE"
+
+# Server Configuration
+# Your public server IP address
+server_ip = "YOUR_PUBLIC_SERVER_IP_HERE"
+
+# Email domains allowed for Cloudflare Access
+allowed_email_domains = ["yourdomain.com", "example.com"]
+
+# =======================================================
+# To generate service tokens, run:
+# cd ../scripts
+# python3 generate-tokens.py
+# =======================================================

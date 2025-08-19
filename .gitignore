@@ -179,6 +179,23 @@ mcp-config.json
 mcp_config.json
 *-config-local.json
 
+# Service configuration files with tokens
+service-tokens.json
+service_tokens.json
+service-config.json
+service_config.json
+*-tokens.json
+*_tokens.json
+*-config.json
+*_config.json
+generated-tokens.json
+
+# Service configuration (keep examples)
+!service-tokens.json.example
+!service_tokens.json.example
+!service-config.json.example
+!service_config.json.example
+
 # Integration test outputs
 integration_test_report.json
 integration_test_*.json
@@ -219,6 +236,20 @@ wrangler.toml
 .wrangler/
 
 # =================
+# TERRAFORM FILES
+# =================
+# Terraform state files (contain sensitive data)
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+!terraform.tfvars.example
+.terraform/
+.terraform.lock.hcl
+crash.log
+terraform.log
+
+# =================
 # BACKUP & ARCHIVE
 # =================
 # Backup files
@@ -239,6 +270,8 @@ wrangler.toml
 # =================
 # DOCUMENTATION
 # =================
+# Complete docs directory (contains sensitive configuration docs)
+docs/
 # Generated documentation
 docs/build/
 site/

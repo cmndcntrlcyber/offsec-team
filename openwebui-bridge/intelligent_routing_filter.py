@@ -26,7 +26,7 @@ class Filter:
             default="https://tools.attck.nexus", description="Base URL for the tools API"
         )
         researcher_api_url: str = Field(
-            default="https://researcher.c3s.nexus", description="Base URL for the researcher API"
+            default="https://researcher.attck.nexus", description="Base URL for the researcher API"
         )
         mcp_research_agent_url: str = Field(
             default="https://research-agent-mcp.attck-community.workers.dev", description="Base URL for the MCP research agent"
@@ -50,7 +50,7 @@ class Filter:
             default=True, description="Enable automatic tool routing based on context"
         )
         enable_researcher_routing: bool = Field(
-            default=True, description="Enable routing through researcher.c3s.nexus for complex analysis"
+            default=True, description="Enable routing through researcher.attck.nexus for complex analysis"
         )
         debug_mode: bool = Field(
             default=False, description="Enable debug logging"
@@ -152,7 +152,7 @@ class Filter:
         return context
 
     def _should_route_to_researcher(self, agent: str, tool: str, message: str) -> bool:
-        """Determine if request should be routed through researcher.c3s.nexus"""
+        """Determine if request should be routed through researcher.attck.nexus"""
         if not self.valves.enable_researcher_routing:
             return False
         
@@ -288,7 +288,7 @@ class Filter:
             }
     
     def _request_researcher_endpoint(self, payload: Dict[str, Any], headers: Dict[str, str]) -> Dict[str, Any]:
-        """Make request to researcher.c3s.nexus endpoint"""
+        """Make request to researcher.attck.nexus endpoint"""
         try:
             response = requests.post(
                 f"{self.valves.researcher_api_url}/analyze",
@@ -299,19 +299,19 @@ class Filter:
             
             if response.status_code == 200:
                 result = response.json()
-                result["endpoint_source"] = "researcher.c3s.nexus"
+                result["endpoint_source"] = "researcher.attck.nexus"
                 return result
             else:
                 return {
                     "success": False,
                     "error": f"HTTP {response.status_code}: {response.text}",
-                    "endpoint_source": "researcher.c3s.nexus"
+                    "endpoint_source": "researcher.attck.nexus"
                 }
         except Exception as e:
             return {
                 "success": False,
                 "error": str(e),
-                "endpoint_source": "researcher.c3s.nexus"
+                "endpoint_source": "researcher.attck.nexus"
             }
     
     def _request_mcp_endpoint(self, payload: Dict[str, Any], headers: Dict[str, str]) -> Dict[str, Any]:
@@ -433,7 +433,7 @@ class Filter:
                 elif result.get("framework"):
                     key_findings.append(f"Tools endpoint identified framework: {result['framework']}")
             
-            elif source == "researcher.c3s.nexus":
+            elif source == "researcher.attck.nexus":
                 if result.get("analysis_completed"):
                     key_findings.append("Researcher provided comprehensive analysis")
                 if result.get("risk_level"):
@@ -453,7 +453,7 @@ class Filter:
         return synthesis
 
     def _route_to_researcher(self, context: Dict[str, Any], agent: str, tool: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-        """Route request through researcher.c3s.nexus (legacy method for fallback)"""
+        """Route request through researcher.attck.nexus (legacy method for fallback)"""
         try:
             headers = {
                 "Authorization": "Bearer " + self.valves.bearer_token,
@@ -580,7 +580,7 @@ class Filter:
                     formatted_response += f"- **{endpoint}:** {error}\n"
                 formatted_response += "\n"
         
-        formatted_response += f"*Routed simultaneously via: chat.attck.nexus → [tools.attck.nexus + researcher.c3s.nexus + research-agent-mcp.attck-community.workers.dev] → chat.attck.nexus*"
+        formatted_response += f"*Routed simultaneously via: chat.attck.nexus → [tools.attck.nexus + researcher.attck.nexus + research-agent-mcp.attck-community.workers.dev] → chat.attck.nexus*"
         
         return formatted_response
 
@@ -609,7 +609,7 @@ class Filter:
             if result.get('tool_results'):
                 formatted_response += f"**Tool Results:**\n{json.dumps(result['tool_results'], indent=2)}\n\n"
         
-        formatted_response += f"*Routed via: chat.attck.nexus → tools.attck.nexus → researcher.c3s.nexus → chat.attck.nexus*"
+        formatted_response += f"*Routed via: chat.attck.nexus → tools.attck.nexus → researcher.attck.nexus → chat.attck.nexus*"
         
         return formatted_response
 
@@ -891,7 +891,23 @@ class Filter:
         # Fallback to first available tool for the agent
         agent_info = self.available_tools.get(agent, {})
         tools = agent_info.get('available_tools', [])
-        return tools[0].split('.')[-1] if tools else 'unknown_tool'
+        if tools and len(tools) > 0:
+            # Extract tool name from full path (e.g., 'rt_dev.generate_template' -> 'generate_template')
+            tool_path = tools[0]
+            if '.' in tool_path:
+                return tool_path.split('.')[-1]
+            else:
+                return tool_path
+        else:
+            # If no tools available, return a default based on agent
+            default_tools = {
+                'rt_dev': 'generate_language_template',
+                'bug_hunter': 'test_injection_vulnerabilities', 
+                'burpsuite_operator': 'launch_automated_scan',
+                'daedelu5': 'audit_infrastructure_compliance',
+                'nexus_kamuy': 'create_multi_agent_workflow'
+            }
+            return default_tools.get(agent, 'unknown_tool')
 
     def _execute_tool(self, agent: str, tool: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool via the API with fallback handling"""

@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "cors": {
+    "allowed_origins": [
+      "https://chat.attck.nexus",
+      "https://tools.attck.nexus",
+      "https://researcher.c3s.nexus",
+      "https://mcp.c3s.nexus",
+      "https://rtpi.attck.nexus",
+      "http://localhost:3001",
+      "http://localhost:8001",
+      "http://localhost:8002",
+      "http://localhost:8003",
+      "http://localhost:8004",
+      "http://localhost:8005"
+    ],
+    "allowed_methods": [
+      "GET",
+      "POST", 
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ],
+    "allowed_headers": [
+      "Content-Type",
+      "Authorization",
+      "X-Service-Token",
+      "X-Service-Name",
+      "X-Requested-With",
+      "X-Original-Service",
+      "X-Gateway-Time"
+    ],
+    "allow_credentials": true,
+    "max_age": 86400,
+    "expose_headers": [
+      "X-Service-Response-Time",
+      "X-Service-Health"
+    ]
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "window_ms": 60000,
+    "max_requests": 100,
+    "skip_failed_requests": false,
+    "skip_successful_requests": false
+  },
+  "security": {
+    "trust_proxy": true,
+    "case_sensitive": false,
+    "strict": false
+  }
+}

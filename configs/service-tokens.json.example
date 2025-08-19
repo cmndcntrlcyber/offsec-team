@@ -1,0 +1,102 @@
+{
+  "generated_at": "2025-XX-XXTXX:XX:XX.XXXXXX",
+  "version": "1.0",
+  "generator": "generate-tokens.py",
+  "total_tokens": 5,
+  "tokens": {
+    "chat-service": {
+      "token": "GENERATED_64_CHAR_TOKEN_WILL_BE_HERE_XXXXXXXXXXXXXXXXXXXXXXXX",
+      "token_hash": "SHA256_HASH_OF_TOKEN_WILL_BE_HERE",
+      "api_key": "CHAT_SERVICE_GENERATED_API_KEY_HERE",
+      "service_name": "chat-service",
+      "generated_at": "2025-XX-XXTXX:XX:XX.XXXXXX",
+      "expires_at": "2026-XX-XXTXX:XX:XX.XXXXXX",
+      "active": true,
+      "permissions": [
+        "/api/chat",
+        "/health",
+        "/openapi.json",
+        "/execute",
+        "/execute/contextual"
+      ],
+      "endpoints": [
+        "https://chat.attck.nexus",
+        "http://localhost:3001"
+      ]
+    },
+    "tools-service": {
+      "token": "GENERATED_64_CHAR_TOKEN_WILL_BE_HERE_XXXXXXXXXXXXXXXXXXXXXXXX",
+      "token_hash": "SHA256_HASH_OF_TOKEN_WILL_BE_HERE",
+      "api_key": "TOOLS_SERVICE_GENERATED_API_KEY_HERE",
+      "service_name": "tools-service",
+      "generated_at": "2025-XX-XXTXX:XX:XX.XXXXXX",
+      "expires_at": "2026-XX-XXTXX:XX:XX.XXXXXX",
+      "active": true,
+      "permissions": [
+        "/api/tools",
+        "/openapi.json",
+        "/agents",
+        "/health"
+      ],
+      "endpoints": [
+        "https://tools.attck.nexus",
+        "http://localhost:8001"
+      ]
+    },
+    "research-service": {
+      "token": "GENERATED_64_CHAR_TOKEN_WILL_BE_HERE_XXXXXXXXXXXXXXXXXXXXXXXX",
+      "token_hash": "SHA256_HASH_OF_TOKEN_WILL_BE_HERE",
+      "api_key": "RESEARCH_SERVICE_GENERATED_API_KEY_HERE",
+      "service_name": "research-service",
+      "generated_at": "2025-XX-XXTXX:XX:XX.XXXXXX",
+      "expires_at": "2026-XX-XXTXX:XX:XX.XXXXXX",
+      "active": true,
+      "permissions": [
+        "/api/research",
+        "/search",
+        "/analyze",
+        "/health"
+      ],
+      "endpoints": [
+        "https://researcher.c3s.nexus",
+        "http://localhost:8002"
+      ]
+    },
+    "mcp-service": {
+      "token": "GENERATED_64_CHAR_TOKEN_WILL_BE_HERE_XXXXXXXXXXXXXXXXXXXXXXXX",
+      "token_hash": "SHA256_HASH_OF_TOKEN_WILL_BE_HERE",
+      "api_key": "MCP_SERVICE_GENERATED_API_KEY_HERE",
+      "service_name": "mcp-service",
+      "generated_at": "2025-XX-XXTXX:XX:XX.XXXXXX",
+      "expires_at": "2026-XX-XXTXX:XX:XX.XXXXXX",
+      "active": true,
+      "permissions": [
+        "/api/mcp",
+        "/models",
+        "/context",
+        "/health"
+      ],
+      "endpoints": [
+        "https://mcp.c3s.nexus",
+        "http://localhost:8003"
+      ]
+    },
+    "rtpi-pen": {
+      "token": "GENERATED_64_CHAR_TOKEN_WILL_BE_HERE_XXXXXXXXXXXXXXXXXXXXXXXX",
+      "token_hash": "SHA256_HASH_OF_TOKEN_WILL_BE_HERE",
+      "api_key": "RTPI_PEN_GENERATED_API_KEY_HERE",
+      "service_name": "rtpi-pen",
+      "generated_at": "2025-XX-XXTXX:XX:XX.XXXXXX",
+      "expires_at": "2026-XX-XXTXX:XX:XX.XXXXXX",
+      "active": true,
+      "permissions": [
+        "/api/rtpi",
+        "/health"
+      ],
+      "endpoints": [
+        "https://rtpi.attck.nexus",
+        "http://localhost:8004"
+      ]
+    }
+  }
+}

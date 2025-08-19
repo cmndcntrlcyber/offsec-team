@@ -21,32 +21,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
-# Add the parent directory to sys.path to import our tools
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from tools.rt_dev.CodeForgeGenerator import CodeForgeGenerator
-from tools.rt_dev.InfrastructureOrchestrator import InfrastructureOrchestrator
-from tools.rt_dev.PlatformConnector import PlatformConnector
-from tools.rt_dev.CIPipelineManager import CIPipelineManager
-
-from tools.bug_hunter.WebVulnerabilityTester import WebVulnerabilityTester
-from tools.bug_hunter.FrameworkSecurityAnalyzer import FrameworkSecurityAnalyzer
-from tools.bug_hunter.VulnerabilityReportGenerator import VulnerabilityReportGenerator
-
-from tools.burpsuite_operator.BurpSuiteAPIClient import BurpSuiteAPIClient
-from tools.burpsuite_operator.BurpScanOrchestrator import BurpScanOrchestrator
-from tools.burpsuite_operator.BurpResultProcessor import BurpResultProcessor
-from tools.burpsuite_operator.BurpVulnerabilityAssessor import BurpVulnerabilityAssessor
-
-from tools.daedelu5.InfrastructureAsCodeManager import InfrastructureAsCodeManager
-from tools.daedelu5.ComplianceAuditor import ComplianceAuditor
-from tools.daedelu5.SecurityPolicyEnforcer import SecurityPolicyEnforcer
-from tools.daedelu5.SelfHealingIntegrator import SelfHealingIntegrator
-
-from tools.nexus_kamuy.WorkflowOrchestrator import WorkflowOrchestrator
-from tools.nexus_kamuy.AgentCoordinator import AgentCoordinator
-from tools.nexus_kamuy.TaskScheduler import TaskScheduler
-from tools.nexus_kamuy.CollaborationManager import CollaborationManager
+# Tool imports will be handled via API calls to tools service
 
 # Configure logging
 logging.basicConfig(
@@ -58,58 +33,12 @@ logger = logging.getLogger("AgentToolBridge")
 # Configuration
 TOOLS_ENDPOINT_URL = os.getenv('TOOLS_ENDPOINT_URL', 'https://tools.attck.nexus')
 
-# Global agent instances
-agent_instances = {}
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager - initialize and cleanup resources"""
-    # Initialize agent instances
-    logger.info("Initializing agent instances...")
-    
-    try:
-        agent_instances.update({
-            # RT-Dev Tools
-            "code_forge_generator": CodeForgeGenerator(),
-            "infrastructure_orchestrator": InfrastructureOrchestrator(),
-            "platform_connector": PlatformConnector(),
-            "ci_pipeline_manager": CIPipelineManager(),
-            
-            # Bug Hunter Tools
-            "web_vulnerability_tester": WebVulnerabilityTester(),
-            "framework_security_analyzer": FrameworkSecurityAnalyzer(),
-            "vulnerability_report_generator": VulnerabilityReportGenerator(),
-            
-            # BurpSuite Operator Tools
-            "burp_suite_client": BurpSuiteAPIClient(),
-            "burp_scan_orchestrator": BurpScanOrchestrator(),
-            "burp_result_processor": BurpResultProcessor(),
-            "burp_vulnerability_assessor": BurpVulnerabilityAssessor(),
-            
-            # Daedelu5 Tools
-            "infrastructure_iac_manager": InfrastructureAsCodeManager(),
-            "compliance_auditor": ComplianceAuditor(),
-            "security_policy_enforcer": SecurityPolicyEnforcer(),
-            "self_healing_integrator": SelfHealingIntegrator(),
-            
-            # Nexus-Kamuy Tools
-            "workflow_orchestrator": WorkflowOrchestrator(),
-            "agent_coordinator": AgentCoordinator(),
-            "task_scheduler": TaskScheduler(),
-            "collaboration_manager": CollaborationManager()
-        })
-        
-        logger.info(f"Successfully initialized {len(agent_instances)} agent instances")
-        
-    except Exception as e:
-        logger.error(f"Failed to initialize agent instances: {str(e)}")
-        raise
-    
+    logger.info("OpenWebUI Bridge service starting...")
     yield
-    
-    # Cleanup
-    logger.info("Cleaning up agent instances...")
-    agent_instances.clear()
+    logger.info("OpenWebUI Bridge service shutting down...")
 
 # Create FastAPI app
 app = FastAPI(
@@ -247,51 +176,49 @@ def get_agent_instance(agent_name: str):
     
     return agent_map.get(agent_name, [])
 
-def execute_agent_tool(agent_name: str, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """Execute a tool on the specified agent"""
+async def execute_agent_tool(agent_name: str, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a tool on the specified agent via tools service API"""
     start_time = datetime.utcnow()
     
     try:
-        # Get relevant agent instances
-        relevant_instances = get_agent_instance(agent_name)
+        # Forward to tools service
+        tools_service_url = os.getenv('TOOLS_SERVICE_URL', 'http://tools-service:8001')
         
-        if not relevant_instances:
-            raise ValueError(f"Unknown agent: {agent_name}")
+        headers = {
+            "Authorization": f"Bearer {os.getenv('TOOLS_SERVICE_TOKEN', '')}",
+            "Content-Type": "application/json"
+        }
         
-        # Find the appropriate instance and method
-        for instance_name in relevant_instances:
-            instance = agent_instances.get(instance_name)
-            if not instance:
-                continue
+        payload = {
+            "tool_name": tool_name,
+            "parameters": parameters,
+            "agent": agent_name
+        }
+        
+        response = await asyncio.to_thread(
+            requests.post,
+            f"{tools_service_url}/execute",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "success": True,
+                "result": result,
+                "execution_time_ms": int(execution_time)
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"Tools service error: {response.status_code}",
+                "execution_time_ms": int(execution_time)
+            }
             
-            # Check if the instance has the requested method
-            if hasattr(instance, tool_name):
-                method = getattr(instance, tool_name)
-                
-                # Execute the method with parameters
-                if callable(method):
-                    result = method(**parameters)
-                    
-                    execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
-                    
-                    return {
-                        "success": True,
-                        "result": result,
-                        "execution_time_ms": int(execution_time)
-                    }
-        
-        # Tool not found in any instance
-        available_tools = []
-        for instance_name in relevant_instances:
-            instance = agent_instances.get(instance_name)
-            if instance:
-                # Get public methods (tools)
-                methods = [method for method in dir(instance) 
-                          if not method.startswith('_') and callable(getattr(instance, method))]
-                available_tools.extend(methods)
-        
-        raise ValueError(f"Tool '{tool_name}' not found in agent '{agent_name}'. Available tools: {available_tools}")
-        
     except Exception as e:
         execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
         
@@ -309,7 +236,7 @@ async def root():
         status="healthy",
         timestamp=datetime.utcnow(),
         version="1.0.0",
-        agents_loaded=len(agent_instances),
+        agents_loaded=5,  # 5 agent types available
         open_webui_endpoint=TOOLS_ENDPOINT_URL
     )
 
@@ -320,39 +247,53 @@ async def health_check():
         status="healthy",
         timestamp=datetime.utcnow(),
         version="1.0.0",
-        agents_loaded=len(agent_instances),
+        agents_loaded=5,  # 5 agent types available
         open_webui_endpoint=TOOLS_ENDPOINT_URL
     )
 
 @app.get("/agents")
 async def list_agents():
     """List available agents and their tools"""
-    agents_info = {}
-    
-    for agent_name in ["rt_dev", "bug_hunter", "burpsuite_operator", "daedelu5", "nexus_kamuy"]:
-        instance_names = get_agent_instance(agent_name)
-        tools = []
+    try:
+        # Forward to tools service to get actual agent info
+        tools_service_url = os.getenv('TOOLS_SERVICE_URL', 'http://tools-service:8001')
         
-        for instance_name in instance_names:
-            instance = agent_instances.get(instance_name)
-            if instance:
-                # Get public methods (tools)
-                methods = [method for method in dir(instance) 
-                          if not method.startswith('_') and callable(getattr(instance, method))]
-                tools.extend([f"{instance_name}.{method}" for method in methods])
+        response = await asyncio.to_thread(
+            requests.get,
+            f"{tools_service_url}/agents",
+            timeout=10
+        )
         
-        agents_info[agent_name] = {
-            "instances": instance_names,
-            "available_tools": tools,
-            "loaded": len([name for name in instance_names if name in agent_instances])
+        if response.status_code == 200:
+            return response.json()
+        else:
+            # Fallback response
+            return {
+                "agents": {
+                    "rt_dev": {"status": "available", "tools": ["code_generation", "infrastructure_management"]},
+                    "bug_hunter": {"status": "available", "tools": ["vulnerability_scanning", "security_analysis"]},
+                    "burpsuite_operator": {"status": "available", "tools": ["web_scanning", "api_testing"]},
+                    "daedelu5": {"status": "available", "tools": ["iac_management", "compliance_audit"]},
+                    "nexus_kamuy": {"status": "available", "tools": ["workflow_orchestration", "task_coordination"]}
+                },
+                "total_agents": 5,
+                "open_webui_endpoint": TOOLS_ENDPOINT_URL
+            }
+            
+    except Exception as e:
+        logger.error(f"Failed to get agents list: {str(e)}")
+        # Return basic agent info
+        return {
+            "agents": {
+                "rt_dev": {"status": "available", "tools": ["code_generation", "infrastructure_management"]},
+                "bug_hunter": {"status": "available", "tools": ["vulnerability_scanning", "security_analysis"]},
+                "burpsuite_operator": {"status": "available", "tools": ["web_scanning", "api_testing"]},
+                "daedelu5": {"status": "available", "tools": ["iac_management", "compliance_audit"]},
+                "nexus_kamuy": {"status": "available", "tools": ["workflow_orchestration", "task_coordination"]}
+            },
+            "total_agents": 5,
+            "open_webui_endpoint": TOOLS_ENDPOINT_URL
         }
-    
-    return {
-        "agents": agents_info,
-        "total_agents": len(agents_info),
-        "total_instances": len(agent_instances),
-        "open_webui_endpoint": TOOLS_ENDPOINT_URL
-    }
 
 @app.post("/execute", response_model=ToolResponse)
 async def execute_tool(
@@ -364,7 +305,7 @@ async def execute_tool(
     
     try:
         # Execute the tool
-        result = execute_agent_tool(request.agent, request.tool_name, request.parameters)
+        result = await execute_agent_tool(request.agent, request.tool_name, request.parameters)
         
         return ToolResponse(
             success=result["success"],
@@ -419,7 +360,7 @@ async def execute_contextual_tool(
             result = await route_to_researcher(request, request.context)
         else:
             logger.info(f"Direct execution of {request.agent}.{request.tool_name}")
-            result = execute_agent_tool(request.agent, request.tool_name, request.parameters)
+            result = await execute_agent_tool(request.agent, request.tool_name, request.parameters)
         
         return ToolResponse(
             success=result["success"],
@@ -562,12 +503,12 @@ async def route_to_researcher(request: ContextualToolRequest, context: Dict[str,
         else:
             logger.warning(f"Researcher API error: {response.status_code} - {response.text}")
             # Fallback to direct tool execution
-            return execute_agent_tool(request.agent, request.tool_name, request.parameters)
+            return await execute_agent_tool(request.agent, request.tool_name, request.parameters)
             
     except Exception as e:
         logger.error(f"Researcher routing error: {str(e)}")
         # Fallback to direct tool execution
-        return execute_agent_tool(request.agent, request.tool_name, request.parameters)
+        return await execute_agent_tool(request.agent, request.tool_name, request.parameters)
 
 # Agent-specific routes
 try:

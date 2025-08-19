@@ -1,0 +1,64 @@
+version: 1.0
+gateway:
+  url: http://localhost:8005
+  port: 8005
+  health_check_interval: 30
+  timeout: 5000
+
+services:
+  chat-service:
+    domain: chat.attck.nexus
+    port: 3001
+    endpoints:
+      - /api/chat
+      - /health
+      - /openapi.json
+    rate_limit: 1000
+
+  tools-service:
+    domain: tools.attck.nexus
+    port: 8001
+    endpoints:
+      - /api/tools
+      - /openapi.json
+      - /agents
+    rate_limit: 500
+
+  research-service:
+    domain: researcher.c3s.nexus
+    port: 8002
+    endpoints:
+      - /api/research
+      - /search
+      - /analyze
+      - /openapi.json
+    rate_limit: 200
+
+  mcp-service:
+    domain: mcp.c3s.nexus
+    port: 8003
+    endpoints:
+      - /api/mcp
+      - /models
+      - /context
+      - /openapi.json
+    rate_limit: 300
+
+  rtpi-pen:
+    domain: rtpi.attck.nexus
+    port: 8004
+    endpoints:
+      - /api/rtpi
+      - /health
+      - /openapi.json
+    rate_limit: 150
+
+security:
+  require_tokens: true
+  validate_origins: true
+  rate_limiting: true
+
+monitoring:
+  enabled: true
+  log_requests: true
+  metrics_retention: 86400

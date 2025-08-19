@@ -1,0 +1,31 @@
+{
+  "name": "offsec-team-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for OffSec Team Cybersecurity Tools",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240821.1",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^4.31.0"
+  },
+  "dependencies": {
+    "@cloudflare/ai": "^1.0.0",
+    "hono": "^4.5.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "cybersecurity",
+    "offsec",
+    "tools"
+  ],
+  "author": "ATTCK Nexus",
+  "license": "MIT"
+}

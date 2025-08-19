@@ -11,8 +11,16 @@
   },
   "servers": [
     {
+      "url": "https://offsec-team.attck.nexus",
+      "description": "Primary production server"
+    },
+    {
+      "url": "https://offsec-team.attck.community.workers.dev",
+      "description": "Cloudflare Worker endpoint"
+    },
+    {
       "url": "https://tools.attck.nexus",
-      "description": "Production server"
+      "description": "Legacy production server"
     },
     {
       "url": "http://localhost:8001", 
