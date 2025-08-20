@@ -17,9 +17,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, Request, Security, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
+from fastapi.websockets import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 import uvicorn
+import json
+from typing import AsyncGenerator
 
 # Tool imports will be handled via API calls to tools service
 
@@ -331,6 +334,84 @@ async def execute_tool(
             execution_time_ms=int(execution_time)
         )
 
+# Streaming utility functions
+async def stream_agent_tool_execution(agent_name: str, tool_name: str, parameters: Dict[str, Any], request_id: Optional[str] = None) -> AsyncGenerator[str, None]:
+    """Execute a tool with streaming progress updates"""
+    start_time = datetime.utcnow()
+    
+    try:
+        # Send initial progress
+        yield f"data: {json.dumps({'type': 'progress', 'timestamp': datetime.utcnow().isoformat(), 'data': {'message': f'Initializing {agent_name}.{tool_name}...', 'progress': 10}, 'source': 'fastapi-backend', 'request_id': request_id})}\n\n"
+        
+        # Forward to tools service for streaming execution
+        tools_service_url = os.getenv('TOOLS_SERVICE_URL', 'http://tools-service:8001')
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('TOOLS_SERVICE_TOKEN', '')}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream"
+        }
+        
+        payload = {
+            "tool_name": tool_name,
+            "parameters": parameters,
+            "agent": agent_name,
+            "request_id": request_id,
+            "stream": True
+        }
+        
+        yield f"data: {json.dumps({'type': 'progress', 'timestamp': datetime.utcnow().isoformat(), 'data': {'message': f'Connecting to tools service...', 'progress': 25}, 'source': 'fastapi-backend', 'request_id': request_id})}\n\n"
+        
+        # Make streaming request to tools service
+        response = await asyncio.to_thread(
+            requests.post,
+            f"{tools_service_url}/execute/stream",
+            headers=headers,
+            json=payload,
+            timeout=60,
+            stream=True
+        )
+        
+        if response.status_code == 200:
+            yield f"data: {json.dumps({'type': 'progress', 'timestamp': datetime.utcnow().isoformat(), 'data': {'message': f'Tool execution started...', 'progress': 50}, 'source': 'fastapi-backend', 'request_id': request_id})}\n\n"
+            
+            # Stream response from tools service
+            for line in response.iter_lines(decode_unicode=True):
+                if line and line.startswith('data: '):
+                    # Forward the streaming data
+                    yield f"{line}\n\n"
+                    
+        else:
+            # Handle error response
+            error_msg = f"Tools service error: {response.status_code}"
+            yield f"data: {json.dumps({'type': 'error', 'timestamp': datetime.utcnow().isoformat(), 'data': {'error': error_msg}, 'source': 'fastapi-backend', 'request_id': request_id})}\n\n"
+            
+    except Exception as e:
+        error_msg = f"Streaming execution failed: {str(e)}"
+        logger.error(error_msg)
+        yield f"data: {json.dumps({'type': 'error', 'timestamp': datetime.utcnow().isoformat(), 'data': {'error': error_msg}, 'source': 'fastapi-backend', 'request_id': request_id})}\n\n"
+    
+    finally:
+        execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.utcnow().isoformat(), 'data': {'message': 'Tool execution completed', 'execution_time_ms': int(execution_time)}, 'source': 'fastapi-backend', 'request_id': request_id})}\n\n"
+
+@app.post("/execute/stream")
+async def execute_tool_stream(
+    request: ToolRequest,
+    token: str = Depends(verify_token)
+):
+    """Execute a tool with streaming progress updates"""
+    return StreamingResponse(
+        stream_agent_tool_execution(request.agent, request.tool_name, request.parameters, request.request_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
+
 @app.post("/execute/contextual", response_model=ToolResponse)
 async def execute_contextual_tool(
     request: ContextualToolRequest,
@@ -386,6 +467,37 @@ async def execute_contextual_tool(
             timestamp=start_time,
             execution_time_ms=int(execution_time)
         )
+
+@app.post("/execute/contextual/stream")
+async def execute_contextual_tool_stream(
+    request: ContextualToolRequest,
+    token: str = Depends(verify_token),
+    x_chat_thread_id: Optional[str] = Header(None),
+    x_user_id: Optional[str] = Header(None),
+    x_session_id: Optional[str] = Header(None),
+    x_origin_endpoint: Optional[str] = Header(None)
+):
+    """Execute a contextual tool with streaming progress updates"""
+    # Build context from headers if not provided in request
+    if not request.context:
+        request.context = {
+            "thread_id": x_chat_thread_id,
+            "user_id": x_user_id,
+            "session_id": x_session_id,
+            "origin_endpoint": x_origin_endpoint or "https://chat.attck.nexus",
+            "timestamp": int(datetime.utcnow().timestamp())
+        }
+    
+    return StreamingResponse(
+        stream_agent_tool_execution(request.agent, request.tool_name, request.parameters, request.request_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
 
 @app.get(
     "/openapi.json",
@@ -509,6 +621,129 @@ async def route_to_researcher(request: ContextualToolRequest, context: Dict[str,
         logger.error(f"Researcher routing error: {str(e)}")
         # Fallback to direct tool execution
         return await execute_agent_tool(request.agent, request.tool_name, request.parameters)
+
+# WebSocket connection manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+        self.session_contexts: Dict[str, Dict[str, Any]] = {}
+    
+    async def connect(self, websocket: WebSocket, session_id: str, context: Dict[str, Any]):
+        await websocket.accept()
+        self.active_connections[session_id] = websocket
+        self.session_contexts[session_id] = context
+        logger.info(f"WebSocket connected: {session_id}")
+    
+    def disconnect(self, session_id: str):
+        if session_id in self.active_connections:
+            del self.active_connections[session_id]
+        if session_id in self.session_contexts:
+            del self.session_contexts[session_id]
+        logger.info(f"WebSocket disconnected: {session_id}")
+    
+    async def send_personal_message(self, message: Dict[str, Any], session_id: str):
+        if session_id in self.active_connections:
+            websocket = self.active_connections[session_id]
+            await websocket.send_text(json.dumps(message))
+    
+    async def broadcast_to_session(self, message: Dict[str, Any], session_id: str):
+        await self.send_personal_message(message, session_id)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for real-time communication"""
+    try:
+        # Accept the connection with context
+        context = {
+            "session_id": session_id,
+            "connected_at": datetime.utcnow().isoformat(),
+            "user_id": "websocket_user",  # Could be extracted from query params
+            "thread_id": f"ws_{session_id}"
+        }
+        
+        await manager.connect(websocket, session_id, context)
+        
+        # Send welcome message
+        await manager.send_personal_message({
+            "type": "connection_established",
+            "session_id": session_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "capabilities": ["streaming", "real_time_updates", "multi_agent_coordination"]
+        }, session_id)
+        
+        while True:
+            # Receive message from client
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+            
+            if message_data.get("type") == "tool_execution":
+                # Handle tool execution via WebSocket
+                await handle_websocket_tool_execution(message_data, session_id)
+            elif message_data.get("type") == "ping":
+                # Handle ping/pong for keepalive
+                await manager.send_personal_message({
+                    "type": "pong",
+                    "timestamp": datetime.utcnow().isoformat()
+                }, session_id)
+            else:
+                # Echo other messages
+                await manager.send_personal_message({
+                    "type": "echo",
+                    "original_message": message_data,
+                    "timestamp": datetime.utcnow().isoformat()
+                }, session_id)
+                
+    except WebSocketDisconnect:
+        manager.disconnect(session_id)
+        logger.info(f"WebSocket client {session_id} disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error for {session_id}: {str(e)}")
+        manager.disconnect(session_id)
+
+async def handle_websocket_tool_execution(message_data: Dict[str, Any], session_id: str):
+    """Handle tool execution via WebSocket with real-time updates"""
+    try:
+        tool_name = message_data.get("tool_name")
+        agent = message_data.get("agent")
+        parameters = message_data.get("parameters", {})
+        request_id = message_data.get("request_id")
+        
+        # Send acknowledgment
+        await manager.send_personal_message({
+            "type": "tool_execution_started",
+            "tool_name": tool_name,
+            "agent": agent,
+            "request_id": request_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }, session_id)
+        
+        # Execute tool with streaming updates via WebSocket
+        async for chunk in stream_agent_tool_execution(agent, tool_name, parameters, request_id):
+            if chunk.startswith("data: "):
+                chunk_data = json.loads(chunk[6:])
+                await manager.send_personal_message({
+                    "type": "tool_stream_chunk",
+                    "chunk_data": chunk_data,
+                    "timestamp": datetime.utcnow().isoformat()
+                }, session_id)
+        
+        # Send completion notification
+        await manager.send_personal_message({
+            "type": "tool_execution_completed",
+            "tool_name": tool_name,
+            "agent": agent,
+            "request_id": request_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }, session_id)
+        
+    except Exception as e:
+        await manager.send_personal_message({
+            "type": "tool_execution_error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }, session_id)
 
 # Agent-specific routes
 try:

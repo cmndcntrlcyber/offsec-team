@@ -414,6 +414,176 @@ class EnhancedResearcherTools:
         total_time = int((time.time() - start_time) * 1000)
         return self._aggregate_parallel_responses(responses, context, total_time)
 
+    async def _stream_parallel_requests(self, context: ResearchContext, query: str, 
+                                      parameters: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
+        """Execute parallel requests with streaming progress updates"""
+        if not self.config.parallel_enabled:
+            return await self._stream_sequential_research(context, query, parameters, progress_callback)
+        
+        self.logger.info(f"Starting streaming parallel research for thread {context.thread_id}")
+        
+        if progress_callback:
+            await progress_callback({
+                "type": "progress",
+                "data": {"message": "Initializing parallel research endpoints...", "progress": 20},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "enhanced_researcher_tools"
+            })
+        
+        # Prepare requests for all endpoints
+        requests_config = [
+            ("tools_api", self._prepare_tools_request, self.config.tools_api),
+            ("researcher_api", self._prepare_researcher_request, self.config.researcher_api),
+            ("mcp_agent", self._prepare_mcp_request, self.config.mcp_research_agent)
+        ]
+        
+        responses = {}
+        start_time = time.time()
+        
+        # Execute requests with progress updates
+        completed_requests = 0
+        total_requests = len(requests_config)
+        
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            # Submit all requests
+            future_to_endpoint = {}
+            for endpoint_name, prepare_func, endpoint_url in requests_config:
+                request_data = prepare_func(context, query, parameters, endpoint_url)
+                future = executor.submit(self._execute_endpoint_request, 
+                                       endpoint_name, request_data)
+                future_to_endpoint[future] = endpoint_name
+            
+            # Collect responses with progress updates
+            for future in as_completed(future_to_endpoint, timeout=self.config.timeout):
+                endpoint_name = future_to_endpoint[future]
+                try:
+                    result = future.result()
+                    responses[endpoint_name] = result
+                    completed_requests += 1
+                    
+                    if progress_callback:
+                        progress_percentage = 20 + (completed_requests / total_requests) * 60  # 20-80% range
+                        await progress_callback({
+                            "type": "progress",
+                            "data": {
+                                "message": f"Completed request to {endpoint_name} ({completed_requests}/{total_requests})",
+                                "progress": int(progress_percentage)
+                            },
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "source": "enhanced_researcher_tools"
+                        })
+                    
+                    self.logger.info(f"Received response from {endpoint_name}")
+                except Exception as e:
+                    self.logger.error(f"Error from {endpoint_name}: {str(e)}")
+                    responses[endpoint_name] = {
+                        "success": False,
+                        "error": str(e),
+                        "endpoint": endpoint_name
+                    }
+                    completed_requests += 1
+                    
+                    if progress_callback:
+                        progress_percentage = 20 + (completed_requests / total_requests) * 60
+                        await progress_callback({
+                            "type": "progress",
+                            "data": {
+                                "message": f"Error from {endpoint_name}: {str(e)}",
+                                "progress": int(progress_percentage)
+                            },
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "source": "enhanced_researcher_tools"
+                        })
+        
+        if progress_callback:
+            await progress_callback({
+                "type": "progress",
+                "data": {"message": "Aggregating results from all endpoints...", "progress": 85},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "enhanced_researcher_tools"
+            })
+        
+        total_time = int((time.time() - start_time) * 1000)
+        return self._aggregate_parallel_responses(responses, context, total_time)
+
+    async def _stream_sequential_research(self, context: ResearchContext, query: str, 
+                                        parameters: Dict[str, Any], progress_callback=None) -> Dict[str, Any]:
+        """Fallback sequential research with streaming updates"""
+        self.logger.info(f"Starting streaming sequential research for thread {context.thread_id}")
+        
+        if progress_callback:
+            await progress_callback({
+                "type": "progress",
+                "data": {"message": "Starting sequential research analysis...", "progress": 25},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "enhanced_researcher_tools"
+            })
+        
+        # Route through researcher API for complex analysis
+        try:
+            request_data = self._prepare_researcher_request(context, query, parameters, self.config.researcher_api)
+            
+            if progress_callback:
+                await progress_callback({
+                    "type": "progress",
+                    "data": {"message": "Connecting to researcher API...", "progress": 50},
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source": "enhanced_researcher_tools"
+                })
+            
+            result = self._execute_endpoint_request("researcher_api", request_data)
+            
+            if result.get("success"):
+                if progress_callback:
+                    await progress_callback({
+                        "type": "progress",
+                        "data": {"message": "Researcher analysis completed", "progress": 85},
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "source": "enhanced_researcher_tools"
+                    })
+                
+                return {
+                    "success": True,
+                    "research_type": "sequential_researcher",
+                    "result": result.get("result", {}),
+                    "context": {
+                        "thread_id": context.thread_id,
+                        "complexity": context.complexity.value,
+                        "agents_involved": [agent.value for agent in context.agents_involved]
+                    }
+                }
+            else:
+                # Fallback to tools API
+                if progress_callback:
+                    await progress_callback({
+                        "type": "progress",
+                        "data": {"message": "Falling back to tools API...", "progress": 60},
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "source": "enhanced_researcher_tools"
+                    })
+                
+                request_data = self._prepare_tools_request(context, query, parameters, self.config.tools_api)
+                result = self._execute_endpoint_request("tools_api", request_data)
+                
+                return {
+                    "success": result.get("success", False),
+                    "research_type": "sequential_tools",
+                    "result": result.get("result", {}),
+                    "context": {
+                        "thread_id": context.thread_id,
+                        "complexity": context.complexity.value,
+                        "agents_involved": [agent.value for agent in context.agents_involved]
+                    }
+                }
+                
+        except Exception as e:
+            self.logger.error(f"Sequential research failed: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "research_type": "sequential_failed"
+            }
+
     def _prepare_tools_request(self, context: ResearchContext, query: str, 
                              parameters: Dict[str, Any], endpoint_url: str) -> Dict[str, Any]:
         """Prepare request for tools.attck.nexus endpoint"""

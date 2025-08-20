@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { stream, streamSSE } from 'hono/streaming';
 
 interface Env {
   TOOL_CACHE: KVNamespace;
@@ -14,6 +15,14 @@ interface Env {
   AI: Ai;
   BACKEND_URL: string;
   ENVIRONMENT: string;
+}
+
+interface StreamChunk {
+  type: 'progress' | 'data' | 'error' | 'complete';
+  timestamp: string;
+  data: any;
+  source?: string;
+  progress?: number;
 }
 
 export { ToolSession } from './durable-objects/ToolSession';
@@ -235,7 +244,143 @@ app.get('/openapi.json', async (c) => {
   return c.json(openApiSpec);
 });
 
-// Proxy all tool execution requests to backend
+// Streaming tool execution endpoint
+app.post('/execute/stream', async (c) => {
+  try {
+    const requestBody = await c.req.json();
+    const { tool_name, agent, parameters, request_id } = requestBody;
+    
+    return streamSSE(c, async (stream) => {
+      try {
+        // Send initial progress
+        await stream.writeSSE({
+          data: JSON.stringify({
+            type: 'progress',
+            timestamp: new Date().toISOString(),
+            data: { message: `Starting ${agent}.${tool_name} execution...`, progress: 0 },
+            source: 'cloudflare-worker',
+            request_id
+          } as StreamChunk)
+        });
+
+        // Forward streaming request to backend
+        const backendResponse = await fetch(`${c.env.BACKEND_URL}/execute/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'offsec-team-worker/1.0.0',
+            'Accept': 'text/event-stream',
+            ...Object.fromEntries(c.req.raw.headers.entries())
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!backendResponse.body) {
+          throw new Error('No response body from backend');
+        }
+
+        const reader = backendResponse.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const eventData = line.slice(6);
+              try {
+                const parsedData = JSON.parse(eventData);
+                await stream.writeSSE({
+                  data: JSON.stringify({
+                    ...parsedData,
+                    source: parsedData.source || 'backend-service'
+                  } as StreamChunk)
+                });
+              } catch (parseError) {
+                // Forward raw data if parsing fails
+                await stream.writeSSE({
+                  data: JSON.stringify({
+                    type: 'data',
+                    timestamp: new Date().toISOString(),
+                    data: eventData,
+                    source: 'backend-service-raw',
+                    request_id
+                  } as StreamChunk)
+                });
+              }
+            }
+          }
+        }
+
+        // Send completion signal
+        await stream.writeSSE({
+          data: JSON.stringify({
+            type: 'complete',
+            timestamp: new Date().toISOString(),
+            data: { message: 'Tool execution completed' },
+            source: 'cloudflare-worker',
+            request_id
+          } as StreamChunk)
+        });
+
+      } catch (streamError) {
+        console.error('Streaming error:', streamError);
+        await stream.writeSSE({
+          data: JSON.stringify({
+            type: 'error',
+            timestamp: new Date().toISOString(),
+            data: { error: streamError.message },
+            source: 'cloudflare-worker',
+            request_id
+          } as StreamChunk)
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error('Stream setup error:', error);
+    return c.json({ error: 'Stream initialization failed', details: error.message }, 500);
+  }
+});
+
+// WebSocket endpoint for real-time communication
+app.get('/ws/:sessionId', async (c) => {
+  try {
+    const sessionId = c.req.param('sessionId');
+    
+    // Upgrade to WebSocket
+    const { response, socket } = Durable.WebSocket.fromWebSocketPair();
+    
+    // Get the Durable Object for this session
+    const id = c.env.TOOL_SESSION.idFromName(sessionId);
+    const toolSession = c.env.TOOL_SESSION.get(id);
+    
+    // Forward WebSocket to Durable Object
+    await toolSession.fetch('http://localhost/websocket', {
+      headers: {
+        'Upgrade': 'websocket',
+        'Connection': 'Upgrade',
+        'Sec-WebSocket-Key': c.req.header('Sec-WebSocket-Key') || '',
+        'Sec-WebSocket-Protocol': c.req.header('Sec-WebSocket-Protocol') || '',
+        'X-Session-ID': sessionId
+      }
+    });
+
+    return new Response(null, {
+      status: 101,
+      webSocket: socket
+    });
+  } catch (error) {
+    console.error('WebSocket setup error:', error);
+    return c.json({ error: 'WebSocket setup failed' }, 500);
+  }
+});
+
+// Traditional proxy for non-streaming requests (backward compatibility)
 app.all('/execute', async (c) => {
   try {
     const requestBody = await c.req.text();
